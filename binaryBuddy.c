@@ -4,6 +4,7 @@
 #define TOTAL_MEMORY 1024*1024	//1024K bytes
 #define SLOT_SIZE 64*1024		//64K bytes
 
+/*TODO-Optimize this*/
 int logbase2 (int num)
 {
 	int i = 0;
@@ -95,20 +96,40 @@ void* bmalloc(size_t size)
 		else
 		{
 			target = heads[i];
-			while(target!=NULL && target->used==1)	// Go through all the used up blocks till NULL comes
+			while(target!=NULL && target->used==1)	// Go through all the used up blocks till NULL comes or we find an unused block
 				target=target->next;
-			if(target==NULL)
+			if(target==NULL)						// There is no unused block at heads[i] level
 				continue;
-			else
+			else									// if target!=NULL then there is an unused memory block that can be returned to the requesting function
 				break;
 		}
 	}
-	// Break a big block of memory node pointed by target into two parts.
-//	printf("@@@@@@@@@@@@@@@%p %d\n", heads[i], index);
+
+	// Break a big block of memory node pointed by target into two parts. Execution will enter this for loop only if a bigger block of memory needs to split
 	for (int j = i; j > index; j--)
 	{
-		if((j-1) >= 0)	// A bigger block needs to be divided into two smaller blocks
+		if((j-1) >= 0)								// A bigger block needs to be divided into two smaller blocks
 		{
+			/*
+			TODO- Explain more about the necessity of the following if condition.
+			It's for reducing wasteful computation as the memory block "target" already has been computed above and
+			hence we don't need to find it once again.
+			So only for the *first* iteration of the current for loop, we don't need to find a memory block which
+			needs to be split into two. But after the first iteration we will need to find the memory blocks which need
+			to be split.
+			*/
+			if(j!=i)
+			{
+				mem_block* touseblock = heads[j];					// First block of size SLOT_SIZE*(2^j)
+				while(touseblock!=NULL && touseblock->used != 0)	// Find an unused block to split
+					touseblock=touseblock->next;
+				target = touseblock;
+			}
+			if(target==NULL)									// There is no memory block which can be returned or there is no bigger block which can be split into two.
+			{
+				fprintf(stderr, "Not enough memory to allocate. All blocks are alloted already. Sorry :/\n");
+				return NULL;
+			}
 			size_t new_block_size = SLOT_SIZE<<(j-1);
 			mem_block* block1 = malloc(sizeof(mem_block));		// Left block
 			mem_block* block2 = malloc(sizeof(mem_block));		// Right block
@@ -116,7 +137,7 @@ void* bmalloc(size_t size)
 			block1->next = block2;
 			block2->mptr = block1->mptr + new_block_size;
 			block2->next = NULL;
-			target->used = 1;		// Bigger block has been successfully divided into two smaller blocks.
+			target->used = 1;			// Bigger block has been successfully divided into two smaller blocks.
 
 			mem_block* temp = heads[j-1];
 			if(temp==NULL)				// There is no node at the linked list in heads[j-1]
@@ -139,15 +160,18 @@ void* bmalloc(size_t size)
 						block2->next = temp;
 					}
 				}
-				else	// We need to loop to find the correct position for the pair of new memory blocks
+				else					// We need to loop to find the correct position for the pair of new memory blocks
 				{
-					// The correct position of block1 and block2 is between temp and temp->next
-					while(temp->mptr < block1->mptr && temp->next->mptr > (block2->mptr + new_block_size))
+					/*TODO- Explain this very very important while condition*/
+					while( temp!=NULL && (temp->next->mptr+new_block_size)<block1->mptr && temp->next->next!=NULL)
 					{
 						temp=temp->next;
 					}
-					block2->next = temp->next;
-					temp->next = block1;
+					if(temp!=NULL)
+					{
+						block2->next = temp->next->next;
+						temp->next->next = block1;
+					}
 				}
 			}
 		}
@@ -164,41 +188,28 @@ void* bmalloc(size_t size)
 		return NULL;
 }
 
-int free_all()
+// This releases the memory from the pointer
+int bfree(void *p)
 {
-	for (int i = no_of_heads-1; i>=0; i--)
-	{
-		mem_block* node = heads[i];
-		while(node!=NULL)
-		{
-			free(node->mptr);
-			node->mptr = NULL;
-			node = node->next;
-		}
-	}
-	return 0;
+	// Just set the pointer to not be used, making it unallocated now
+	((mem_block *)p)->used = 0;
+	printf("Released memory at %p\n", p);
 }
 
 int main(int argc, char const *argv[])
 {
 	init();
 	printf("\nMemory:\n");show_memory();
-	printf("Allocated memory in:%p\n", bmalloc(10*1024));
+	printf("Allocated memory at:%p\n", bmalloc(34*1024));
+	printf("Allocated memory at:%p\n", bmalloc(66*1024));
+	printf("Allocated memory at:%p\n", bmalloc(35*1024));
+	printf("Allocated memory at:%p\n", bmalloc(123*1024));
+	printf("Allocated memory at:%p\n", bmalloc(100*1024));
+	printf("Allocated memory at:%p\n", bmalloc(56*1024));
+	printf("Allocated memory at:%p\n", bmalloc(85*1024));
+	printf("Allocated memory at:%p\n", bmalloc(250*1024));
+	printf("Allocated memory at:%p\n", bmalloc(10*1024));
+	printf("Allocated memory at:%p\n", bmalloc(10*1024));
 	printf("\nMemory:\n");show_memory();
-	// printf("Allocated memory in:%p\n", bmalloc(10*1024));
-	// printf("\nMemory:\n");show_memory();
-	// printf("Allocated memory in:%p\n", bmalloc(10*1024));
-	// printf("\nMemory:\n");show_memory();
-
-/*
-	free_all();
-	for(int i=no_of_heads-1; i>=0; i--)
-	{
-		printf("%p ", heads[i]);
-		if(heads[i]!=NULL)
-			printf("%p\n", heads[i]->mptr);
-		else	printf("\n");
-	}
-*/
 	return 0;
 }
