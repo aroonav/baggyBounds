@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-
-#define TOTAL_MEMORY 1024*1024	//1024K bytes
-#define SLOT_SIZE 64*1024		//64K bytes
+#include "binaryBuddy.h"
 
 /*TODO-Optimize this*/
 int logbase2 (int num)
@@ -15,13 +11,6 @@ int logbase2 (int num)
 	}
 	return i;
 }
-
-typedef struct node
-{
-	void* mptr;
-	struct node* next;
-	int used;			//0-Not used, 1->used block or the block is divided into two smaller blocks
-}mem_block;
 
 /* Global Variables */
 int log_total_mem;
@@ -188,7 +177,8 @@ void* bmalloc(size_t size)
 		return NULL;
 }
 
-// This releases the memory from the pointer
+// This releases the memory from the pointer.
+// TODO- Complete this definition
 int bfree(void *p)
 {
 	// Just set the pointer to not be used, making it unallocated now
@@ -196,10 +186,13 @@ int bfree(void *p)
 	printf("Released memory at %p\n", p);
 }
 
-int main(int argc, char const *argv[])
+
+//TEST CODE
+/*int main(int argc, char const *argv[])
 {
 	init();
 	printf("\nMemory:\n");show_memory();
+	// Testing of allocation of memory
 	printf("Allocated memory at:%p\n", bmalloc(34*1024));
 	printf("Allocated memory at:%p\n", bmalloc(66*1024));
 	printf("Allocated memory at:%p\n", bmalloc(35*1024));
@@ -209,7 +202,7 @@ int main(int argc, char const *argv[])
 	printf("Allocated memory at:%p\n", bmalloc(85*1024));
 	printf("Allocated memory at:%p\n", bmalloc(250*1024));
 	printf("Allocated memory at:%p\n", bmalloc(10*1024));
-	printf("Allocated memory at:%p\n", bmalloc(10*1024));
 	printf("\nMemory:\n");show_memory();
 	return 0;
 }
+*/
