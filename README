@@ -1,0 +1,3 @@
+## Buddy memory allocator
+
+This is a binary buddy memory allocator written in C.
